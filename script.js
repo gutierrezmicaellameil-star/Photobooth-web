@@ -315,26 +315,44 @@ function applyFilterToVideo() {
   videoFeed.style.filter = FILTER_CSS[currentFilter] || "none";
 }
 
-// ── Capture the full native video frame — no cropping, no forced ratio ─
-// The web preview uses object-fit:cover which crops the image to fill the
-// 4:3 frame box, but the DOWNLOAD should contain the complete photo as-is.
+// ── Capture frame cropped to 16:9, matching the strip frame ratio ────────
 function captureFrame() {
-  const vw = videoFeed.videoWidth  || 640;
-  const vh = videoFeed.videoHeight || 480;
+  const vw = videoFeed.videoWidth  || 1280;
+  const vh = videoFeed.videoHeight || 720;
 
-  filterCanvas.width  = vw;
-  filterCanvas.height = vh;
+  const TARGET_RATIO = 16 / 9;
+  const videoRatio   = vw / vh;
+
+  let sx, sy, sw, sh;
+  if (videoRatio > TARGET_RATIO) {
+    // Video wider than 16:9 — crop sides
+    sh = vh;
+    sw = Math.round(vh * TARGET_RATIO);
+    sx = Math.round((vw - sw) / 2);
+    sy = 0;
+  } else {
+    // Video taller than 16:9 — crop top/bottom
+    sw = vw;
+    sh = Math.round(vw / TARGET_RATIO);
+    sx = 0;
+    sy = Math.round((vh - sh) / 2);
+  }
+
+  const OUT_W = 1280;
+  const OUT_H = 720;
+
+  filterCanvas.width  = OUT_W;
+  filterCanvas.height = OUT_H;
   const ctx = filterCanvas.getContext("2d");
   ctx.save();
 
-  // Mirror for front camera
   if (facingMode === "user") {
-    ctx.translate(vw, 0);
+    ctx.translate(OUT_W, 0);
     ctx.scale(-1, 1);
   }
 
   ctx.filter = FILTER_CSS[currentFilter] || "none";
-  ctx.drawImage(videoFeed, 0, 0, vw, vh);
+  ctx.drawImage(videoFeed, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H);
   ctx.restore();
 
   return filterCanvas.toDataURL("image/png");

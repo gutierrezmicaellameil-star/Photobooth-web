@@ -111,7 +111,7 @@ body {
 .camera-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -275,7 +275,7 @@ body {
 
 .strip-frame {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   background: #ccc8c0;
   border-radius: 2px;
   overflow: hidden;
