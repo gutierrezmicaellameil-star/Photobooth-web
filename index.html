@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapBooth — Instant Photo Strip</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Scanline overlay for retro feel -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Flash overlay -->
+  <div class="flash-overlay" id="flashOverlay" aria-hidden="true"></div>
+
+  <div class="app-wrapper">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <h1>SnapBooth</h1>
+      </div>
+      <p class="tagline">four frames. one memory.</p>
+    </header>
+
+    <!-- Main layout -->
+    <main class="main-layout">
+
+      <!-- Left: Camera + Controls -->
+      <section class="camera-section">
+
+        <!-- Camera preview -->
+        <div class="camera-frame" id="cameraFrame">
+          <div class="camera-corners">
+            <span class="corner tl"></span>
+            <span class="corner tr"></span>
+            <span class="corner bl"></span>
+            <span class="corner br"></span>
+          </div>
+          <video id="videoFeed" autoplay playsinline muted></video>
+          <canvas id="filterCanvas" class="filter-canvas"></canvas>
+
+          <!-- Countdown overlay -->
+          <div class="countdown-overlay" id="countdownOverlay" hidden>
+            <span class="countdown-number" id="countdownNumber"></span>
+          </div>
+
+          <!-- Shot indicator -->
+          <div class="shot-indicator" id="shotIndicator" hidden>
+            <div class="shot-dots">
+              <span class="dot" id="dot0"></span>
+              <span class="dot" id="dot1"></span>
+              <span class="dot" id="dot2"></span>
+              <span class="dot" id="dot3"></span>
+            </div>
+          </div>
+
+          <!-- Camera off screen -->
+          <div class="camera-off-screen" id="cameraOffScreen">
+            <div class="cam-icon">⬛</div>
+            <p>Camera inactive</p>
+          </div>
+        </div>
+
+        <!-- Filter selector -->
+        <div class="filter-row" id="filterRow">
+          <p class="filter-label">FILTER</p>
+          <div class="filter-options">
+            <button class="filter-btn active" data-filter="normal" aria-pressed="true">
+              <span class="filter-preview normal">N</span>
+              <span>Normal</span>
+            </button>
+            <button class="filter-btn" data-filter="grayscale" aria-pressed="false">
+              <span class="filter-preview grayscale">G</span>
+              <span>Mono</span>
+            </button>
+            <button class="filter-btn" data-filter="sepia" aria-pressed="false">
+              <span class="filter-preview sepia">S</span>
+              <span>Sepia</span>
+            </button>
+            <button class="filter-btn" data-filter="vivid" aria-pressed="false">
+              <span class="filter-preview vivid">V</span>
+              <span>Vivid</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="action-row">
+          <button class="btn-primary" id="startBtn">
+            <span class="btn-icon">▶</span>
+            Start Photobooth
+          </button>
+          <button class="btn-secondary" id="retakeBtn" hidden>
+            <span class="btn-icon">↺</span>
+            Retake
+          </button>
+        </div>
+
+        <!-- Status message -->
+        <p class="status-msg" id="statusMsg">Click "Start Photobooth" to begin your session</p>
+
+      </section>
+
+      <!-- Right: Photo strip -->
+      <section class="strip-section" id="stripSection">
+        <div class="strip-container" id="stripContainer">
+          <div class="strip-header-label">SnapBooth</div>
+
+          <div class="strip-frames" id="stripFrames">
+            <div class="strip-frame empty" id="frame0"><span class="frame-num">1</span></div>
+            <div class="strip-frame empty" id="frame1"><span class="frame-num">2</span></div>
+            <div class="strip-frame empty" id="frame2"><span class="frame-num">3</span></div>
+            <div class="strip-frame empty" id="frame3"><span class="frame-num">4</span></div>
+          </div>
+
+          <div class="strip-footer-label">
+            <span id="stripDate"></span>
+          </div>
+        </div>
+
+        <!-- Download area -->
+        <div class="download-area" id="downloadArea" hidden>
+          <button class="btn-download" id="downloadBtn">
+            <span class="btn-icon">↓</span>
+            Download Strip
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
