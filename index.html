@@ -10,15 +10,11 @@
 </head>
 <body>
 
-  <!-- Scanline overlay for retro feel -->
   <div class="scanlines" aria-hidden="true"></div>
-
-  <!-- Flash overlay -->
   <div class="flash-overlay" id="flashOverlay" aria-hidden="true"></div>
 
   <div class="app-wrapper">
 
-    <!-- Header -->
     <header class="app-header">
       <div class="logo">
         <span class="logo-icon">◈</span>
@@ -27,13 +23,11 @@
       <p class="tagline">four frames. one memory.</p>
     </header>
 
-    <!-- Main layout -->
     <main class="main-layout">
 
       <!-- Left: Camera + Controls -->
       <section class="camera-section">
 
-        <!-- Camera preview -->
         <div class="camera-frame" id="cameraFrame">
           <div class="camera-corners">
             <span class="corner tl"></span>
@@ -44,12 +38,10 @@
           <video id="videoFeed" autoplay playsinline muted></video>
           <canvas id="filterCanvas" class="filter-canvas"></canvas>
 
-          <!-- Countdown overlay -->
           <div class="countdown-overlay" id="countdownOverlay" hidden>
             <span class="countdown-number" id="countdownNumber"></span>
           </div>
 
-          <!-- Shot indicator -->
           <div class="shot-indicator" id="shotIndicator" hidden>
             <div class="shot-dots">
               <span class="dot" id="dot0"></span>
@@ -59,14 +51,12 @@
             </div>
           </div>
 
-          <!-- Camera off screen -->
           <div class="camera-off-screen" id="cameraOffScreen">
             <div class="cam-icon">⬛</div>
             <p>Camera inactive</p>
           </div>
         </div>
 
-        <!-- Filter selector -->
         <div class="filter-row" id="filterRow">
           <p class="filter-label">FILTER</p>
           <div class="filter-options">
@@ -89,7 +79,6 @@
           </div>
         </div>
 
-        <!-- Action buttons -->
         <div class="action-row">
           <button class="btn-primary" id="startBtn">
             <span class="btn-icon">▶</span>
@@ -101,29 +90,63 @@
           </button>
         </div>
 
-        <!-- Status message -->
         <p class="status-msg" id="statusMsg">Click "Start Photobooth" to begin your session</p>
 
       </section>
 
       <!-- Right: Photo strip -->
       <section class="strip-section" id="stripSection">
-        <div class="strip-container" id="stripContainer">
-          <div class="strip-header-label">SnapBooth</div>
+
+        <div class="theme-row">
+          <p class="filter-label">STRIP STYLE</p>
+          <div class="theme-options">
+            <button class="theme-btn active" data-theme="classic" aria-pressed="true">
+              <span class="theme-swatch classic"></span>
+              <span>Classic</span>
+            </button>
+            <button class="theme-btn" data-theme="pastel" aria-pressed="false">
+              <span class="theme-swatch pastel"></span>
+              <span>Pastel</span>
+            </button>
+            <button class="theme-btn" data-theme="diner" aria-pressed="false">
+              <span class="theme-swatch diner"></span>
+              <span>Diner</span>
+            </button>
+            <button class="theme-btn" data-theme="cottage" aria-pressed="false">
+              <span class="theme-swatch cottage"></span>
+              <span>Cottage</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="strip-container" id="stripContainer" data-theme="classic">
+          <div class="strip-header-label" id="stripHeaderLabel">SnapBooth</div>
 
           <div class="strip-frames" id="stripFrames">
-            <div class="strip-frame empty" id="frame0"><span class="frame-num">1</span></div>
-            <div class="strip-frame empty" id="frame1"><span class="frame-num">2</span></div>
-            <div class="strip-frame empty" id="frame2"><span class="frame-num">3</span></div>
-            <div class="strip-frame empty" id="frame3"><span class="frame-num">4</span></div>
+            <div class="strip-frame empty" id="frame0">
+              <span class="frame-num">1</span>
+              <span class="frame-sticker sticker-0"></span>
+            </div>
+            <div class="strip-frame empty" id="frame1">
+              <span class="frame-num">2</span>
+              <span class="frame-sticker sticker-1"></span>
+            </div>
+            <div class="strip-frame empty" id="frame2">
+              <span class="frame-num">3</span>
+              <span class="frame-sticker sticker-2"></span>
+            </div>
+            <div class="strip-frame empty" id="frame3">
+              <span class="frame-num">4</span>
+              <span class="frame-sticker sticker-3"></span>
+            </div>
           </div>
 
           <div class="strip-footer-label">
+            <span class="strip-tagline" id="stripTagline"></span>
             <span id="stripDate"></span>
           </div>
         </div>
 
-        <!-- Download area -->
         <div class="download-area" id="downloadArea" hidden>
           <button class="btn-download" id="downloadBtn">
             <span class="btn-icon">↓</span>
@@ -133,7 +156,6 @@
       </section>
 
     </main>
-
   </div>
 
   <script src="script.js"></script>

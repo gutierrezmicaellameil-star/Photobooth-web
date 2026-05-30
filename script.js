@@ -1,8 +1,3 @@
-/* =========================================================
-   SnapBooth — script.js
-   Vanilla JS, no external dependencies
-   ========================================================= */
-
 "use strict";
 
 // ── DOM References ────────────────────────────────────────
@@ -19,6 +14,10 @@ const downloadBtn      = document.getElementById("downloadBtn");
 const downloadArea     = document.getElementById("downloadArea");
 const statusMsg        = document.getElementById("statusMsg");
 const filterBtns       = document.querySelectorAll(".filter-btn");
+const themeBtns        = document.querySelectorAll(".theme-btn");
+const stripContainer   = document.getElementById("stripContainer");
+const stripHeaderLabel = document.getElementById("stripHeaderLabel");
+const stripTagline     = document.getElementById("stripTagline");
 const stripFrames      = [0,1,2,3].map(i => document.getElementById(`frame${i}`));
 const dots             = [0,1,2,3].map(i => document.getElementById(`dot${i}`));
 const stripDate        = document.getElementById("stripDate");
@@ -26,10 +25,11 @@ const stripDate        = document.getElementById("stripDate");
 // ── State ─────────────────────────────────────────────────
 let stream          = null;
 let currentFilter   = "normal";
-let capturedImages  = [];   // Array of data URLs
+let currentTheme    = "classic";
+let capturedImages  = [];
 let isRunning       = false;
 
-// ── Filter CSS map (for canvas rendering) ─────────────────
+// ── Filter CSS map ────────────────────────────────────────
 const FILTER_CSS = {
   normal:    "none",
   grayscale: "grayscale(1)",
@@ -37,18 +37,222 @@ const FILTER_CSS = {
   vivid:     "saturate(2) contrast(1.1)",
 };
 
+// ── Sticker sets per theme (4 stickers, one per frame) ────
+const STICKERS = {
+  classic:  ["", "", "", ""],
+  pastel:   ["🌸", "⭐", "🐠", "🌙"],
+  diner:    ["🎵", "🎶", "🎵", "🎵"],
+  cottage:  ["🌻", "🌿", "🌸", "❋"],
+};
+
+// ── Sticker canvas positions: {xRatio, yRatio, anchor} per frame index per theme ──
+// xRatio/yRatio are fractions of frame width/height; anchor is corner
+const STICKER_POS = {
+  classic:  null, // no stickers
+  pastel:   [
+    { xRatio: 0.93, yRatio: 0.10, anchor: "tr" }, // frame 0: top-right
+    { xRatio: 0.08, yRatio: 0.88, anchor: "bl" }, // frame 1: bottom-left
+    { xRatio: 0.93, yRatio: 0.10, anchor: "tr" }, // frame 2: top-right
+    { xRatio: 0.08, yRatio: 0.88, anchor: "bl" }, // frame 3: bottom-left
+  ],
+  diner: [
+    { xRatio: 0.08, yRatio: 0.10, anchor: "tl" },
+    { xRatio: 0.08, yRatio: 0.10, anchor: "tl" },
+    { xRatio: 0.08, yRatio: 0.10, anchor: "tl" },
+    { xRatio: 0.08, yRatio: 0.10, anchor: "tl" },
+  ],
+  cottage: [
+    { xRatio: 0.5, yRatio: 0.5, anchor: "center" },
+    { xRatio: 0.5, yRatio: 0.5, anchor: "center" },
+    { xRatio: 0.5, yRatio: 0.5, anchor: "center" },
+    { xRatio: 0.5, yRatio: 0.5, anchor: "center" },
+  ],
+};
+
+// ── Theme config ──────────────────────────────────────────
+const THEMES = {
+  classic: {
+    header:  "SnapBooth",
+    tagline: "",
+    padding: 24, gap: 6, labelTop: 56, labelBtm: 44,
+    drawBg(ctx, sw, sh) {
+      ctx.fillStyle = "#f5f0e8";
+      ctx.fillRect(0, 0, sw, sh);
+      ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 3;
+      ctx.strokeRect(6, 6, sw - 12, sh - 12);
+    },
+    drawHeader(ctx, sw, ltop, fw) {
+      ctx.fillStyle = "#1a1a22";
+      ctx.font = `italic ${Math.round(fw * 0.07)}px Georgia, serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("SnapBooth", sw / 2, ltop / 2 + 4);
+      ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(24, ltop - 4); ctx.lineTo(sw - 24, ltop - 4); ctx.stroke();
+    },
+    drawFooter(ctx, sw, sh, fw, fh, pad, ltop, lbtm, gap, dateStr) {
+      const fy = ltop + 4 * (fh + gap) - gap + 8;
+      ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad, fy); ctx.lineTo(sw - pad, fy); ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.font = `${Math.round(fw * 0.028)}px 'Courier New', monospace`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(dateStr.toUpperCase(), sw / 2, fy + (lbtm + pad) / 2 - 4);
+    },
+  },
+  pastel: {
+    header:  "♡ booth",
+    tagline: "always in bloom ✦",
+    padding: 20, gap: 6, labelTop: 58, labelBtm: 50,
+    drawBg(ctx, sw, sh) {
+      ctx.fillStyle = "#FDF6FF";
+      ctx.fillRect(0, 0, sw, sh);
+      ctx.strokeStyle = "#E8C8F5"; ctx.lineWidth = 2;
+      ctx.strokeRect(2, 2, sw - 4, sh - 4);
+      ctx.strokeStyle = "#EDD5F9"; ctx.lineWidth = 0.8;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(7, 7, sw - 14, sh - 14);
+      ctx.setLineDash([]);
+      const corners = [[18,18],[sw-18,18],[18,sh-18],[sw-18,sh-18]];
+      ctx.fillStyle = "#E9AFF5"; ctx.font = "13px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      corners.forEach(([x,y]) => ctx.fillText("✦", x, y));
+    },
+    drawHeader(ctx, sw, ltop, fw) {
+      ctx.fillStyle = "#C78FE5";
+      ctx.font = `italic ${Math.round(fw * 0.065)}px Georgia, serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("♡ booth", sw / 2, ltop / 2 + 2);
+      ctx.strokeStyle = "#EDD5F9"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(20, ltop - 4); ctx.lineTo(sw - 20, ltop - 4); ctx.stroke();
+    },
+    drawFooter(ctx, sw, sh, fw, fh, pad, ltop, lbtm, gap, dateStr) {
+      const fy = ltop + 4 * (fh + gap) - gap + 10;
+      ctx.strokeStyle = "#EDD5F9"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad, fy); ctx.lineTo(sw - pad, fy); ctx.stroke();
+      ctx.fillStyle = "#C78FE5";
+      ctx.font = `italic ${Math.round(fw * 0.031)}px Georgia, serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("always in bloom ✦", sw / 2, fy + 16);
+      ctx.font = `${Math.round(fw * 0.026)}px 'Courier New', monospace`;
+      ctx.fillStyle = "#D5A8E8";
+      ctx.fillText(dateStr, sw / 2, fy + 32);
+    },
+  },
+  diner: {
+    header:  "SNAP!",
+    tagline: "★ PHOTO BOOTH ★",
+    padding: 22, gap: 8, labelTop: 64, labelBtm: 54,
+    drawBg(ctx, sw, sh) {
+      ctx.fillStyle = "#FFF8E7";
+      ctx.fillRect(0, 0, sw, sh);
+      ctx.strokeStyle = "#E8394D"; ctx.lineWidth = 4;
+      ctx.strokeRect(2, 2, sw - 4, sh - 4);
+      ctx.strokeStyle = "#E8394D"; ctx.lineWidth = 1;
+      ctx.strokeRect(8, 8, sw - 16, sh - 16);
+    },
+    drawHeader(ctx, sw, ltop, fw) {
+      ctx.fillStyle = "#E8394D"; ctx.fillRect(0, 0, sw, ltop);
+      ctx.fillStyle = "#FFF8E7";
+      ctx.font = `900 ${Math.round(fw * 0.075)}px 'Arial Black', Arial, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("SNAP!", sw / 2, ltop / 2);
+      ctx.fillStyle = "#FFD700"; ctx.font = "16px sans-serif";
+      ctx.fillText("★", 16, ltop / 2 + 4); ctx.fillText("★", sw - 16, ltop / 2 + 4);
+    },
+    drawFooter(ctx, sw, sh, fw, fh, pad, ltop, lbtm, gap, dateStr) {
+      const fy = ltop + 4 * (fh + gap) - gap + 12;
+      ctx.strokeStyle = "#E8394D"; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let zx = pad; ctx.moveTo(zx, fy);
+      const zstep = 8;
+      while (zx < sw - pad) {
+        ctx.lineTo(Math.min(zx + zstep/2, sw - pad), fy + 5);
+        ctx.lineTo(Math.min(zx + zstep, sw - pad), fy);
+        zx += zstep;
+      }
+      ctx.stroke();
+      ctx.fillStyle = "#E8394D";
+      ctx.font = `bold ${Math.round(fw * 0.028)}px 'Arial Black', Arial, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("PHOTO BOOTH", sw / 2, fy + 18);
+      ctx.font = `${Math.round(fw * 0.024)}px 'Courier New', monospace`;
+      ctx.fillStyle = "#C4334A";
+      ctx.fillText("★  " + dateStr + "  ★", sw / 2, fy + 34);
+    },
+  },
+  cottage: {
+    header:  "a little memory",
+    tagline: "gathered & kept",
+    padding: 20, gap: 7, labelTop: 58, labelBtm: 52,
+    drawBg(ctx, sw, sh) {
+      ctx.fillStyle = "#FAF3E6"; ctx.fillRect(0, 0, sw, sh);
+      ctx.strokeStyle = "#8BAF72"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(2, 2, sw - 4, sh - 4);
+      const drawLeaf = (x, y, angle) => {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+        ctx.fillStyle = "#A8C98A";
+        ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      };
+      drawLeaf(14, 14, -Math.PI/4); drawLeaf(sw-14, 14, Math.PI/4);
+      drawLeaf(14, sh-14, Math.PI/4); drawLeaf(sw-14, sh-14, -Math.PI/4);
+    },
+    drawHeader(ctx, sw, ltop, fw) {
+      ctx.fillStyle = "#6D8E56";
+      ctx.font = `italic ${Math.round(fw * 0.055)}px Georgia, serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("a little memory", sw / 2, ltop / 2 + 2);
+      ctx.strokeStyle = "#B8CF80"; ctx.lineWidth = 0.8;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath(); ctx.moveTo(18, ltop - 4); ctx.lineTo(sw - 18, ltop - 4); ctx.stroke();
+      ctx.setLineDash([]);
+    },
+    drawFooter(ctx, sw, sh, fw, fh, pad, ltop, lbtm, gap, dateStr) {
+      const fy = ltop + 4 * (fh + gap) - gap + 10;
+      ctx.strokeStyle = "#B8CF80"; ctx.lineWidth = 0.8;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath(); ctx.moveTo(pad, fy); ctx.lineTo(sw - pad, fy); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#7A9A63";
+      ctx.font = `italic ${Math.round(fw * 0.032)}px Georgia, serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("gathered & kept", sw / 2, fy + 16);
+      ctx.fillStyle = "#A09070";
+      ctx.font = `${Math.round(fw * 0.026)}px 'Courier New', monospace`;
+      const months = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+      const d = new Date();
+      ctx.fillText(`${months[d.getMonth()]} ${d.getFullYear()}`, sw / 2, fy + 32);
+    },
+  },
+};
+
+// ── Apply theme to live strip UI ──────────────────────────
+function applyThemeToUI(theme) {
+  const t = THEMES[theme];
+  stripContainer.dataset.theme = theme;
+  stripHeaderLabel.textContent = t.header;
+  stripTagline.textContent     = t.tagline || "";
+  // Update stickers for all empty frames
+  const stickers = STICKERS[theme] || ["", "", "", ""];
+  stripFrames.forEach((frame, i) => {
+    let stickerEl = frame.querySelector(".frame-sticker");
+    if (!stickerEl) {
+      stickerEl = document.createElement("span");
+      stickerEl.className = `frame-sticker sticker-${i}`;
+      frame.appendChild(stickerEl);
+    }
+    stickerEl.textContent = stickers[i] || "";
+  });
+}
+
 // ── Date stamp ────────────────────────────────────────────
 (function setDate() {
   const d   = new Date();
   const pad = n => String(n).padStart(2, "0");
-  stripDate.textContent =
-    `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
+  stripDate.textContent = `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
 })();
 
 // ── Helpers ───────────────────────────────────────────────
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 function setStatus(msg, cls = "") {
   statusMsg.textContent = msg;
@@ -57,38 +261,28 @@ function setStatus(msg, cls = "") {
 
 function triggerFlash() {
   flashOverlay.classList.remove("flashing");
-  void flashOverlay.offsetWidth; // reflow to re-trigger
+  void flashOverlay.offsetWidth;
   flashOverlay.classList.add("flashing");
 }
 
 function playShutterSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-    // Mechanical click: short noise burst + sharp pitch drop
     const bufLen = ctx.sampleRate * 0.04;
     const buf    = ctx.createBuffer(1, bufLen, ctx.sampleRate);
     const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
-    }
-    const src = ctx.createBufferSource();
+    for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+    const src  = ctx.createBufferSource();
     src.buffer = buf;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.setValueAtTime(0.45, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
-
-    src.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    src.start();
-    src.stop(ctx.currentTime + 0.07);
-  } catch (_) {
-    // AudioContext not available — silently skip
-  }
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.45, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+    src.connect(gain); gain.connect(ctx.destination);
+    src.start(); src.stop(ctx.currentTime + 0.07);
+  } catch (_) {}
 }
 
-// ── Camera Initialisation ─────────────────────────────────
+// ── Camera ────────────────────────────────────────────────
 async function startCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -102,57 +296,34 @@ async function startCamera() {
     setStatus('Click "Start Photobooth" to begin your session');
     return true;
   } catch (err) {
-    setStatus(`Camera error: ${err.message}`, "");
+    setStatus(`Camera error: ${err.message}`);
     cameraOffScreen.classList.remove("hidden");
     return false;
   }
 }
 
-// ── Filter Selection ──────────────────────────────────────
-filterBtns.forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (isRunning) return;
-    filterBtns.forEach(b => { b.classList.remove("active"); b.setAttribute("aria-pressed","false"); });
-    btn.classList.add("active");
-    btn.setAttribute("aria-pressed","true");
-    currentFilter = btn.dataset.filter;
-    applyFilterToVideo();
-  });
-});
-
-// Apply live CSS filter to video element for preview
 function applyFilterToVideo() {
   videoFeed.style.filter = FILTER_CSS[currentFilter] || "none";
 }
 
-// ── Photo Capture ─────────────────────────────────────────
 function captureFrame() {
   const w = videoFeed.videoWidth  || 640;
   const h = videoFeed.videoHeight || 480;
-
   filterCanvas.width  = w;
   filterCanvas.height = h;
-
   const ctx = filterCanvas.getContext("2d");
-
-  // Mirror to match preview
   ctx.save();
-  ctx.translate(w, 0);
-  ctx.scale(-1, 1);
-
+  ctx.translate(w, 0); ctx.scale(-1, 1);
   ctx.filter = FILTER_CSS[currentFilter] || "none";
   ctx.drawImage(videoFeed, 0, 0, w, h);
   ctx.restore();
-
   return filterCanvas.toDataURL("image/png");
 }
 
-// ── Countdown ─────────────────────────────────────────────
 async function runCountdown(from = 3) {
   countdownOverlay.hidden = false;
   for (let i = from; i >= 1; i--) {
     countdownNumber.textContent = i;
-    // Re-trigger animation each tick
     countdownNumber.style.animation = "none";
     void countdownNumber.offsetWidth;
     countdownNumber.style.animation = "";
@@ -162,173 +333,136 @@ async function runCountdown(from = 3) {
   countdownOverlay.hidden = true;
 }
 
-// ── Main Photobooth Sequence ──────────────────────────────
+// ── Main Photobooth Sequence (4 frames) ───────────────────
 async function runPhotobooth() {
   isRunning = true;
   capturedImages = [];
 
-  // Reset strip frames
+  // Reset all 4 frames
   stripFrames.forEach((f, i) => {
-    f.innerHTML = `<span class="frame-num">${i+1}</span>`;
+    const sticker = STICKERS[currentTheme]?.[i] || "";
+    f.innerHTML = `<span class="frame-num">${i+1}</span><span class="frame-sticker sticker-${i}">${sticker}</span>`;
     f.classList.add("empty");
     f.classList.remove("just-captured");
   });
   dots.forEach(d => d.classList.remove("taken"));
-  downloadArea.hidden = true;
-  retakeBtn.hidden    = true;
-  startBtn.disabled   = true;
+  downloadArea.hidden  = true;
+  retakeBtn.hidden     = true;
+  startBtn.disabled    = true;
   filterBtns.forEach(b => b.disabled = true);
-
-  // Show shot indicator
+  themeBtns.forEach(b => b.disabled = true);
   shotIndicator.hidden = false;
 
-  // 4 shots — each with its own 3-2-1 countdown
   for (let i = 0; i < 4; i++) {
     setStatus(`Photo ${i+1} of 4 — get ready!`, "active");
-
-    // Full countdown before every shot
     await runCountdown(3);
-
     setStatus(`📸 Taking photo ${i+1} of 4…`, "active");
 
-    // Flash + sound
     triggerFlash();
     playShutterSound();
 
     const dataUrl = captureFrame();
     capturedImages.push(dataUrl);
 
-    // Update strip frame
     const frame = stripFrames[i];
     frame.innerHTML = "";
     const img = new Image();
-    img.src = dataUrl;
-    img.alt = `Photo ${i+1}`;
+    img.src = dataUrl; img.alt = `Photo ${i+1}`;
     frame.appendChild(img);
+    // Keep sticker on top of the photo
+    const sticker = STICKERS[currentTheme]?.[i];
+    if (sticker) {
+      const stickerEl = document.createElement("span");
+      stickerEl.className = `frame-sticker sticker-${i}`;
+      stickerEl.textContent = sticker;
+      frame.appendChild(stickerEl);
+    }
     frame.classList.remove("empty");
     frame.classList.add("just-captured");
     setTimeout(() => frame.classList.remove("just-captured"), 600);
-
-    // Fill dot
     dots[i].classList.add("taken");
 
-    // Brief pause after the shot before next countdown starts
-    if (i < 3) {
-      await sleep(800);
-    }
+    if (i < 3) await sleep(800);
   }
 
-  // Done
-  shotIndicator.hidden = true;
+  shotIndicator.hidden = false;
   setStatus("Strip complete! Download or retake.", "done");
-  startBtn.disabled   = false;
-  startBtn.hidden     = true;
-  retakeBtn.hidden    = false;
+  startBtn.disabled    = false;
+  startBtn.hidden      = true;
+  retakeBtn.hidden     = false;
   filterBtns.forEach(b => b.disabled = false);
-  downloadArea.hidden = false;
-  isRunning           = false;
+  themeBtns.forEach(b => b.disabled = false);
+  downloadArea.hidden  = false;
+  isRunning            = false;
 }
 
 // ── Download Strip ────────────────────────────────────────
 async function downloadStrip() {
   if (capturedImages.length < 4) return;
 
-  // Load all images
-  const imgs = await Promise.all(capturedImages.map(src => {
-    return new Promise((res, rej) => {
-      const img = new Image();
-      img.onload  = () => res(img);
-      img.onerror = rej;
-      img.src     = src;
-    });
-  }));
+  const imgs = await Promise.all(capturedImages.map(src => new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img); img.onerror = rej; img.src = src;
+  })));
 
-  const FRAME_W    = imgs[0].naturalWidth  || 640;
-  const FRAME_H    = imgs[0].naturalHeight || 480;
-
-  // Strip dimensions
-  const PADDING    = 24;
-  const GAP        = 10;
-  const LABEL_TOP  = 56;
-  const LABEL_BTM  = 44;
-  const STRIP_W    = FRAME_W + PADDING * 2;
-  const STRIP_H    = LABEL_TOP + (FRAME_H + GAP) * 4 - GAP + LABEL_BTM + PADDING;
+  const t      = THEMES[currentTheme];
+  const FRAME_W = imgs[0].naturalWidth  || 640;
+  const FRAME_H = imgs[0].naturalHeight || 480;
+  const PAD     = t.padding;
+  const GAP     = t.gap;
+  const LTOP    = t.labelTop;
+  const LBTM    = t.labelBtm;
+  const STRIP_W = FRAME_W + PAD * 2;
+  const STRIP_H = LTOP + (FRAME_H + GAP) * 4 - GAP + LBTM + PAD;
 
   const canvas = document.createElement("canvas");
   canvas.width  = STRIP_W;
   canvas.height = STRIP_H;
   const ctx = canvas.getContext("2d");
 
-  // Background — cream
-  ctx.fillStyle = "#f5f0e8";
-  ctx.fillRect(0, 0, STRIP_W, STRIP_H);
+  t.drawBg(ctx, STRIP_W, STRIP_H);
+  t.drawHeader(ctx, STRIP_W, LTOP, FRAME_W);
 
-  // Decorative border
-  ctx.strokeStyle = "rgba(0,0,0,0.12)";
-  ctx.lineWidth   = 3;
-  ctx.strokeRect(6, 6, STRIP_W - 12, STRIP_H - 12);
+  const stickerEmoji = STICKERS[currentTheme] || ["","","",""];
+  const stickerPos   = STICKER_POS[currentTheme];
+  const emojiSize    = Math.round(FRAME_W * 0.09);
 
-  // Header label
-  ctx.fillStyle  = "#1a1a22";
-  ctx.textAlign  = "center";
-  ctx.textBaseline = "middle";
-
-  // Italic serif font for header
-  ctx.font = `italic ${Math.round(FRAME_W * 0.06)}px Georgia, serif`;
-  ctx.fillText("SnapBooth", STRIP_W / 2, LABEL_TOP / 2 + 4);
-
-  // Divider
-  ctx.strokeStyle = "rgba(0,0,0,0.1)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(PADDING, LABEL_TOP - 4);
-  ctx.lineTo(STRIP_W - PADDING, LABEL_TOP - 4);
-  ctx.stroke();
-
-  // Draw frames
   imgs.forEach((img, i) => {
-    const x = PADDING;
-    const y = LABEL_TOP + i * (FRAME_H + GAP);
-
-    // Subtle shadow under each frame
-    ctx.shadowColor   = "rgba(0,0,0,0.18)";
-    ctx.shadowBlur    = 8;
-    ctx.shadowOffsetY = 3;
+    const x = PAD;
+    const y = LTOP + i * (FRAME_H + GAP);
+    ctx.shadowColor   = "rgba(0,0,0,0.15)";
+    ctx.shadowBlur    = 6;
+    ctx.shadowOffsetY = 2;
     ctx.drawImage(img, x, y, FRAME_W, FRAME_H);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur  = 0;
-    ctx.shadowOffsetY = 0;
-
-    // Frame border
-    ctx.strokeStyle = "rgba(0,0,0,0.1)";
-    ctx.lineWidth   = 1;
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = "rgba(0,0,0,0.08)"; ctx.lineWidth = 1;
     ctx.strokeRect(x, y, FRAME_W, FRAME_H);
+
+    // Draw sticker emoji on top of frame
+    const emoji = stickerEmoji[i];
+    if (emoji && stickerPos) {
+      const pos = stickerPos[i];
+      ctx.save();
+      ctx.font = `${emojiSize}px serif`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.globalAlpha = 0.85;
+      const ex = x + FRAME_W * pos.xRatio;
+      const ey = y + FRAME_H * pos.yRatio;
+      ctx.fillText(emoji, ex, ey);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
   });
 
-  // Footer label — date
   const d   = new Date();
   const pad = n => String(n).padStart(2, "0");
   const dateStr = `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
+  t.drawFooter(ctx, STRIP_W, STRIP_H, FRAME_W, FRAME_H, PAD, LTOP, LBTM, GAP, dateStr);
 
-  // Divider
-  const footerY = LABEL_TOP + 4 * (FRAME_H + GAP) - GAP + 8;
-  ctx.strokeStyle = "rgba(0,0,0,0.1)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(PADDING, footerY);
-  ctx.lineTo(STRIP_W - PADDING, footerY);
-  ctx.stroke();
-
-  ctx.fillStyle    = "rgba(0,0,0,0.35)";
-  ctx.font         = `${Math.round(FRAME_W * 0.028)}px 'Courier New', monospace`;
-  ctx.textAlign    = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(dateStr.toUpperCase(), STRIP_W / 2, footerY + (LABEL_BTM + PADDING) / 2 - 4);
-
-  // Trigger download
-  const link     = document.createElement("a");
-  link.download  = `snapbooth-${Date.now()}.png`;
-  link.href      = canvas.toDataURL("image/png");
+  const link    = document.createElement("a");
+  link.download = `snapbooth-${currentTheme}-${Date.now()}.png`;
+  link.href     = canvas.toDataURL("image/png");
   link.click();
 }
 
@@ -336,7 +470,8 @@ async function downloadStrip() {
 function retake() {
   capturedImages = [];
   stripFrames.forEach((f, i) => {
-    f.innerHTML = `<span class="frame-num">${i+1}</span>`;
+    const sticker = STICKERS[currentTheme]?.[i] || "";
+    f.innerHTML = `<span class="frame-num">${i+1}</span><span class="frame-sticker sticker-${i}">${sticker}</span>`;
     f.classList.add("empty");
   });
   dots.forEach(d => d.classList.remove("taken"));
@@ -347,13 +482,31 @@ function retake() {
 }
 
 // ── Event Listeners ───────────────────────────────────────
+filterBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (isRunning) return;
+    filterBtns.forEach(b => { b.classList.remove("active"); b.setAttribute("aria-pressed","false"); });
+    btn.classList.add("active"); btn.setAttribute("aria-pressed","true");
+    currentFilter = btn.dataset.filter;
+    applyFilterToVideo();
+  });
+});
+
+themeBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (isRunning) return;
+    themeBtns.forEach(b => { b.classList.remove("active"); b.setAttribute("aria-pressed","false"); });
+    btn.classList.add("active"); btn.setAttribute("aria-pressed","true");
+    currentTheme = btn.dataset.theme;
+    applyThemeToUI(currentTheme);
+  });
+});
+
 startBtn.addEventListener("click", async () => {
-  // Init camera on first click if not already streaming
   if (!stream) {
     setStatus("Requesting camera access…");
     const ok = await startCamera();
     if (!ok) return;
-    // Small pause to let camera warm up
     await sleep(400);
   }
   applyFilterToVideo();
@@ -364,16 +517,11 @@ retakeBtn.addEventListener("click", retake);
 downloadBtn.addEventListener("click", downloadStrip);
 
 // ── Init ──────────────────────────────────────────────────
-// Attempt silent camera init on load (optional; comment out to require button click)
+applyThemeToUI(currentTheme);
+
 (async () => {
-  // Check if permissions might already be granted without prompting
   try {
     const perm = await navigator.permissions.query({ name: "camera" });
-    if (perm.state === "granted") {
-      await startCamera();
-      applyFilterToVideo();
-    }
-  } catch (_) {
-    // permissions API not available, wait for user click
-  }
+    if (perm.state === "granted") { await startCamera(); applyFilterToVideo(); }
+  } catch (_) {}
 })();
