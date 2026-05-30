@@ -206,6 +206,17 @@ body {
   border-radius: var(--radius); cursor: pointer; transition: border-color 0.2s, background 0.2s;
 }
 .btn-secondary:hover { border-color: rgba(255,255,255,0.25); background: var(--bg-card); }
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Flip button — compact, never grows */
+.btn-flip {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  padding: 14px 14px;
+  color: var(--gold);
+  border-color: var(--border-accent);
+}
+.btn-flip:hover { border-color: var(--gold); background: rgba(245,200,66,0.07); }
 
 .status-msg { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em; text-align: center; min-height: 1.2em; transition: color 0.3s; }
 .status-msg.active { color: var(--gold); }
@@ -274,7 +285,7 @@ body {
   z-index: 1;
 }
 
-/* ── Sticker decorations — shown on empty AND captured frames ── */
+/* ── Sticker decorations ── */
 .frame-sticker {
   position: absolute;
   font-size: 1.4rem;
@@ -286,22 +297,18 @@ body {
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
 }
 
-/* Default (classic) — no stickers */
 .strip-container[data-theme="classic"] .frame-sticker { display: none; }
 
-/* Pastel sticker positions */
 .strip-container[data-theme="pastel"] .sticker-0 { top: 6px; right: 7px; }
 .strip-container[data-theme="pastel"] .sticker-1 { bottom: 6px; left: 7px; }
 .strip-container[data-theme="pastel"] .sticker-2 { top: 6px; right: 7px; }
 .strip-container[data-theme="pastel"] .sticker-3 { bottom: 6px; left: 7px; }
 
-/* Diner sticker positions */
 .strip-container[data-theme="diner"] .sticker-0 { top: 5px; left: 6px; }
 .strip-container[data-theme="diner"] .sticker-1 { top: 5px; left: 6px; }
 .strip-container[data-theme="diner"] .sticker-2 { top: 5px; left: 6px; }
 .strip-container[data-theme="diner"] .sticker-3 { top: 5px; left: 6px; }
 
-/* Cottage sticker positions */
 .strip-container[data-theme="cottage"] .sticker-0 { top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 2rem; opacity: 0.35; }
 .strip-container[data-theme="cottage"] .sticker-1 { top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 2rem; opacity: 0.35; }
 .strip-container[data-theme="cottage"] .sticker-2 { top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 2rem; opacity: 0.35; }
@@ -388,7 +395,6 @@ body {
 .strip-container[data-theme="pastel"] .strip-footer-label {
   color: #C78FE5; border-top: 1px solid #EDD5F9; font-style: italic;
 }
-/* Pastel frame colors cycle */
 .strip-container[data-theme="pastel"] #frame0.empty { background: #F5E0FF; }
 .strip-container[data-theme="pastel"] #frame1.empty { background: #FFE5F5; }
 .strip-container[data-theme="pastel"] #frame2.empty { background: #D9F0FF; }
@@ -413,7 +419,6 @@ body {
 .strip-container[data-theme="diner"] .strip-footer-label {
   color: #E8394D; border-top: 1px dashed #E8394D; letter-spacing: 0.12em;
 }
-/* Diner frame colors cycle warm/cool */
 .strip-container[data-theme="diner"] #frame0.empty { background: #FFE8EB; border: 1px solid #E8394D; }
 .strip-container[data-theme="diner"] #frame1.empty { background: #FFF0CC; border: 1px solid #E8A030; }
 .strip-container[data-theme="diner"] #frame2.empty { background: #FFE8EB; border: 1px solid #E8394D; }
@@ -435,7 +440,6 @@ body {
 .strip-container[data-theme="cottage"] .strip-footer-label {
   color: #7A9A63; border-top: 1px dashed #B8CF80; font-style: italic;
 }
-/* Cottage frame colors cycle greens */
 .strip-container[data-theme="cottage"] #frame0.empty { background: #EFF5E4; border: 1px solid #A8C980; }
 .strip-container[data-theme="cottage"] #frame1.empty { background: #E8F5E0; border: 1px solid #A8C980; }
 .strip-container[data-theme="cottage"] #frame2.empty { background: #F0EFDF; border: 1px solid #B8C890; }

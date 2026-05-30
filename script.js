@@ -10,6 +10,7 @@ const shotIndicator    = document.getElementById("shotIndicator");
 const flashOverlay     = document.getElementById("flashOverlay");
 const startBtn         = document.getElementById("startBtn");
 const retakeBtn        = document.getElementById("retakeBtn");
+const flipBtn          = document.getElementById("flipBtn");
 const downloadBtn      = document.getElementById("downloadBtn");
 const downloadArea     = document.getElementById("downloadArea");
 const statusMsg        = document.getElementById("statusMsg");
@@ -28,6 +29,7 @@ let currentFilter   = "normal";
 let currentTheme    = "classic";
 let capturedImages  = [];
 let isRunning       = false;
+let facingMode      = "user"; // "user" = front, "environment" = back
 
 // ── Filter CSS map ────────────────────────────────────────
 const FILTER_CSS = {
@@ -37,7 +39,7 @@ const FILTER_CSS = {
   vivid:     "saturate(2) contrast(1.1)",
 };
 
-// ── Sticker sets per theme (4 stickers, one per frame) ────
+// ── Sticker sets per theme ────────────────────────────────
 const STICKERS = {
   classic:  ["", "", "", ""],
   pastel:   ["🌸", "⭐", "🐠", "🌙"],
@@ -45,15 +47,13 @@ const STICKERS = {
   cottage:  ["🌻", "🌿", "🌸", "❋"],
 };
 
-// ── Sticker canvas positions: {xRatio, yRatio, anchor} per frame index per theme ──
-// xRatio/yRatio are fractions of frame width/height; anchor is corner
 const STICKER_POS = {
-  classic:  null, // no stickers
+  classic:  null,
   pastel:   [
-    { xRatio: 0.93, yRatio: 0.10, anchor: "tr" }, // frame 0: top-right
-    { xRatio: 0.08, yRatio: 0.88, anchor: "bl" }, // frame 1: bottom-left
-    { xRatio: 0.93, yRatio: 0.10, anchor: "tr" }, // frame 2: top-right
-    { xRatio: 0.08, yRatio: 0.88, anchor: "bl" }, // frame 3: bottom-left
+    { xRatio: 0.93, yRatio: 0.10, anchor: "tr" },
+    { xRatio: 0.08, yRatio: 0.88, anchor: "bl" },
+    { xRatio: 0.93, yRatio: 0.10, anchor: "tr" },
+    { xRatio: 0.08, yRatio: 0.88, anchor: "bl" },
   ],
   diner: [
     { xRatio: 0.08, yRatio: 0.10, anchor: "tl" },
@@ -231,7 +231,6 @@ function applyThemeToUI(theme) {
   stripContainer.dataset.theme = theme;
   stripHeaderLabel.textContent = t.header;
   stripTagline.textContent     = t.tagline || "";
-  // Update stickers for all empty frames
   const stickers = STICKERS[theme] || ["", "", "", ""];
   stripFrames.forEach((frame, i) => {
     let stickerEl = frame.querySelector(".frame-sticker");
@@ -284,15 +283,25 @@ function playShutterSound() {
 
 // ── Camera ────────────────────────────────────────────────
 async function startCamera() {
+  // Stop any existing stream first
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } },
+      video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
       audio: false,
     });
     videoFeed.srcObject = stream;
     await new Promise(res => { videoFeed.onloadedmetadata = res; });
     await videoFeed.play();
     cameraOffScreen.classList.add("hidden");
+
+    // Only mirror the front-facing camera
+    videoFeed.style.transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
+
     setStatus('Click "Start Photobooth" to begin your session');
     return true;
   } catch (err) {
@@ -306,17 +315,52 @@ function applyFilterToVideo() {
   videoFeed.style.filter = FILTER_CSS[currentFilter] || "none";
 }
 
+// ── Capture frame matching exactly what's shown on screen ─
+// The video element uses object-fit: cover on a 4:3 container.
+// We replicate that crop so the downloaded strip matches the preview.
 function captureFrame() {
-  const w = videoFeed.videoWidth  || 640;
-  const h = videoFeed.videoHeight || 480;
-  filterCanvas.width  = w;
-  filterCanvas.height = h;
+  const vw = videoFeed.videoWidth  || 640;
+  const vh = videoFeed.videoHeight || 480;
+
+  // Camera frame is 4:3
+  const TARGET_RATIO = 4 / 3;
+  const videoRatio   = vw / vh;
+
+  let sx, sy, sw, sh;
+  if (videoRatio > TARGET_RATIO) {
+    // Video wider than display → crop left & right
+    sh = vh;
+    sw = Math.round(vh * TARGET_RATIO);
+    sx = Math.round((vw - sw) / 2);
+    sy = 0;
+  } else {
+    // Video taller than display → crop top & bottom
+    sw = vw;
+    sh = Math.round(vw / TARGET_RATIO);
+    sx = 0;
+    sy = Math.round((vh - sh) / 2);
+  }
+
+  // Fixed output size matching the strip frame proportions
+  const OUT_W = 640;
+  const OUT_H = 480; // 4:3
+
+  filterCanvas.width  = OUT_W;
+  filterCanvas.height = OUT_H;
   const ctx = filterCanvas.getContext("2d");
   ctx.save();
-  ctx.translate(w, 0); ctx.scale(-1, 1);
+
+  // Mirror for front camera (matches the CSS transform on the video element)
+  if (facingMode === "user") {
+    ctx.translate(OUT_W, 0);
+    ctx.scale(-1, 1);
+  }
+
   ctx.filter = FILTER_CSS[currentFilter] || "none";
-  ctx.drawImage(videoFeed, 0, 0, w, h);
+  // Draw only the visible crop region from the raw video
+  ctx.drawImage(videoFeed, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H);
   ctx.restore();
+
   return filterCanvas.toDataURL("image/png");
 }
 
@@ -333,12 +377,11 @@ async function runCountdown(from = 3) {
   countdownOverlay.hidden = true;
 }
 
-// ── Main Photobooth Sequence (4 frames) ───────────────────
+// ── Main Photobooth Sequence ──────────────────────────────
 async function runPhotobooth() {
   isRunning = true;
   capturedImages = [];
 
-  // Reset all 4 frames
   stripFrames.forEach((f, i) => {
     const sticker = STICKERS[currentTheme]?.[i] || "";
     f.innerHTML = `<span class="frame-num">${i+1}</span><span class="frame-sticker sticker-${i}">${sticker}</span>`;
@@ -349,6 +392,7 @@ async function runPhotobooth() {
   downloadArea.hidden  = true;
   retakeBtn.hidden     = true;
   startBtn.disabled    = true;
+  if (flipBtn) flipBtn.disabled = true;
   filterBtns.forEach(b => b.disabled = true);
   themeBtns.forEach(b => b.disabled = true);
   shotIndicator.hidden = false;
@@ -369,7 +413,6 @@ async function runPhotobooth() {
     const img = new Image();
     img.src = dataUrl; img.alt = `Photo ${i+1}`;
     frame.appendChild(img);
-    // Keep sticker on top of the photo
     const sticker = STICKERS[currentTheme]?.[i];
     if (sticker) {
       const stickerEl = document.createElement("span");
@@ -390,6 +433,7 @@ async function runPhotobooth() {
   startBtn.disabled    = false;
   startBtn.hidden      = true;
   retakeBtn.hidden     = false;
+  if (flipBtn) flipBtn.disabled = false;
   filterBtns.forEach(b => b.disabled = false);
   themeBtns.forEach(b => b.disabled = false);
   downloadArea.hidden  = false;
@@ -405,7 +449,8 @@ async function downloadStrip() {
     img.onload = () => res(img); img.onerror = rej; img.src = src;
   })));
 
-  const t      = THEMES[currentTheme];
+  const t       = THEMES[currentTheme];
+  // captureFrame() always outputs 640×480, so these will be consistent
   const FRAME_W = imgs[0].naturalWidth  || 640;
   const FRAME_H = imgs[0].naturalHeight || 480;
   const PAD     = t.padding;
@@ -438,7 +483,6 @@ async function downloadStrip() {
     ctx.strokeStyle = "rgba(0,0,0,0.08)"; ctx.lineWidth = 1;
     ctx.strokeRect(x, y, FRAME_W, FRAME_H);
 
-    // Draw sticker emoji on top of frame
     const emoji = stickerEmoji[i];
     if (emoji && stickerPos) {
       const pos = stickerPos[i];
@@ -481,6 +525,19 @@ function retake() {
   setStatus('Click "Start Photobooth" to begin your session');
 }
 
+// ── Camera Flip ───────────────────────────────────────────
+async function flipCamera() {
+  if (isRunning) return;
+  facingMode = facingMode === "user" ? "environment" : "user";
+  flipBtn.title = facingMode === "user" ? "Switch to back camera" : "Switch to front camera";
+  flipBtn.innerHTML = facingMode === "user"
+    ? '<span class="btn-icon">⇄</span> Front Cam'
+    : '<span class="btn-icon">⇄</span> Back Cam';
+  setStatus("Switching camera…");
+  const ok = await startCamera();
+  if (ok) applyFilterToVideo();
+}
+
 // ── Event Listeners ───────────────────────────────────────
 filterBtns.forEach(btn => {
   btn.addEventListener("click", () => {
@@ -515,6 +572,7 @@ startBtn.addEventListener("click", async () => {
 
 retakeBtn.addEventListener("click", retake);
 downloadBtn.addEventListener("click", downloadStrip);
+if (flipBtn) flipBtn.addEventListener("click", flipCamera);
 
 // ── Init ──────────────────────────────────────────────────
 applyThemeToUI(currentTheme);
