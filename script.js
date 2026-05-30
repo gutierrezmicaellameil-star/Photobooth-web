@@ -416,78 +416,40 @@ async function runPhotobooth() {
   isRunning            = false;
 }
 
-// ── Download Strip ────────────────────────────────────────
+// ── Download Strip — screenshot the live HTML strip directly ─────────────
 async function downloadStrip() {
   if (capturedImages.length < 4) return;
 
-  const imgs = await Promise.all(capturedImages.map(src => new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img); img.onerror = rej; img.src = src;
-  })));
+  setStatus("Preparing download…", "active");
 
-  const t       = THEMES[currentTheme];
-  // Use the image's native aspect ratio — no cropping at all.
-  // Cap frame width so the strip file stays a reasonable size.
-  const MAX_FRAME_W = 720;
-  const nativeW = imgs[0].naturalWidth  || 640;
-  const nativeH = imgs[0].naturalHeight || 480;
-  const FRAME_W = Math.min(nativeW, MAX_FRAME_W);
-  const FRAME_H = Math.round(FRAME_W * (nativeH / nativeW));
-  const PAD     = t.padding;
-  const GAP     = t.gap;
-  const LTOP    = t.labelTop;
-  const LBTM    = t.labelBtm;
-  const STRIP_W = FRAME_W + PAD * 2;
-  const STRIP_H = LTOP + (FRAME_H + GAP) * 4 - GAP + LBTM + PAD;
+  // Dynamically load html2canvas if not already present
+  if (!window.html2canvas) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
 
-  const canvas = document.createElement("canvas");
-  canvas.width  = STRIP_W;
-  canvas.height = STRIP_H;
-  const ctx = canvas.getContext("2d");
+  try {
+    const canvas = await window.html2canvas(stripContainer, {
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      logging: false,
+    });
 
-  t.drawBg(ctx, STRIP_W, STRIP_H);
-  t.drawHeader(ctx, STRIP_W, LTOP, FRAME_W);
-
-  const stickerEmoji = STICKERS[currentTheme] || ["","","",""];
-  const stickerPos   = STICKER_POS[currentTheme];
-  const emojiSize    = Math.round(FRAME_W * 0.09);
-
-  imgs.forEach((img, i) => {
-    const x = PAD;
-    const y = LTOP + i * (FRAME_H + GAP);
-    ctx.shadowColor   = "rgba(0,0,0,0.15)";
-    ctx.shadowBlur    = 6;
-    ctx.shadowOffsetY = 2;
-    ctx.drawImage(img, x, y, FRAME_W, FRAME_H);
-    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-    ctx.strokeStyle = "rgba(0,0,0,0.08)"; ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, FRAME_W, FRAME_H);
-
-    const emoji = stickerEmoji[i];
-    if (emoji && stickerPos) {
-      const pos = stickerPos[i];
-      ctx.save();
-      ctx.font = `${emojiSize}px serif`;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.globalAlpha = 0.85;
-      const ex = x + FRAME_W * pos.xRatio;
-      const ey = y + FRAME_H * pos.yRatio;
-      ctx.fillText(emoji, ex, ey);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-  });
-
-  const d   = new Date();
-  const pad = n => String(n).padStart(2, "0");
-  const dateStr = `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
-  t.drawFooter(ctx, STRIP_W, STRIP_H, FRAME_W, FRAME_H, PAD, LTOP, LBTM, GAP, dateStr);
-
-  const link    = document.createElement("a");
-  link.download = `snapbooth-${currentTheme}-${Date.now()}.png`;
-  link.href     = canvas.toDataURL("image/png");
-  link.click();
+    const link    = document.createElement("a");
+    link.download = `snapbooth-${currentTheme}-${Date.now()}.png`;
+    link.href     = canvas.toDataURL("image/png");
+    link.click();
+    setStatus("Strip downloaded!", "done");
+  } catch (err) {
+    setStatus("Download failed: " + err.message);
+  }
 }
 
 // ── Retake ────────────────────────────────────────────────
