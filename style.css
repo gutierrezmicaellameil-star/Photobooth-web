@@ -208,15 +208,30 @@ body {
 .btn-secondary:hover { border-color: rgba(255,255,255,0.25); background: var(--bg-card); }
 .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Flip button — compact, never grows */
-.btn-flip {
-  flex: 0 0 auto;
-  font-size: 0.7rem;
-  padding: 14px 14px;
-  color: var(--gold);
-  border-color: var(--border-accent);
+/* Flip button — overlaid top-left inside the camera frame */
+.btn-cam-flip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 15;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  border: 1.5px solid rgba(255,255,255,0.25);
+  color: var(--cream);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  backdrop-filter: blur(4px);
 }
-.btn-flip:hover { border-color: var(--gold); background: rgba(245,200,66,0.07); }
+.btn-cam-flip:hover  { background: rgba(245,200,66,0.25); border-color: var(--gold); color: var(--gold); }
+.btn-cam-flip:active { transform: scale(0.9); }
+.btn-cam-flip:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .status-msg { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em; text-align: center; min-height: 1.2em; transition: color 0.3s; }
 .status-msg.active { color: var(--gold); }

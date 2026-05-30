@@ -315,50 +315,26 @@ function applyFilterToVideo() {
   videoFeed.style.filter = FILTER_CSS[currentFilter] || "none";
 }
 
-// ── Capture frame matching exactly what's shown on screen ─
-// The video element uses object-fit: cover on a 4:3 container.
-// We replicate that crop so the downloaded strip matches the preview.
+// ── Capture the full native video frame — no cropping, no forced ratio ─
+// The web preview uses object-fit:cover which crops the image to fill the
+// 4:3 frame box, but the DOWNLOAD should contain the complete photo as-is.
 function captureFrame() {
   const vw = videoFeed.videoWidth  || 640;
   const vh = videoFeed.videoHeight || 480;
 
-  // Camera frame is 4:3
-  const TARGET_RATIO = 4 / 3;
-  const videoRatio   = vw / vh;
-
-  let sx, sy, sw, sh;
-  if (videoRatio > TARGET_RATIO) {
-    // Video wider than display → crop left & right
-    sh = vh;
-    sw = Math.round(vh * TARGET_RATIO);
-    sx = Math.round((vw - sw) / 2);
-    sy = 0;
-  } else {
-    // Video taller than display → crop top & bottom
-    sw = vw;
-    sh = Math.round(vw / TARGET_RATIO);
-    sx = 0;
-    sy = Math.round((vh - sh) / 2);
-  }
-
-  // Fixed output size matching the strip frame proportions
-  const OUT_W = 640;
-  const OUT_H = 480; // 4:3
-
-  filterCanvas.width  = OUT_W;
-  filterCanvas.height = OUT_H;
+  filterCanvas.width  = vw;
+  filterCanvas.height = vh;
   const ctx = filterCanvas.getContext("2d");
   ctx.save();
 
-  // Mirror for front camera (matches the CSS transform on the video element)
+  // Mirror for front camera
   if (facingMode === "user") {
-    ctx.translate(OUT_W, 0);
+    ctx.translate(vw, 0);
     ctx.scale(-1, 1);
   }
 
   ctx.filter = FILTER_CSS[currentFilter] || "none";
-  // Draw only the visible crop region from the raw video
-  ctx.drawImage(videoFeed, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H);
+  ctx.drawImage(videoFeed, 0, 0, vw, vh);
   ctx.restore();
 
   return filterCanvas.toDataURL("image/png");
@@ -450,9 +426,13 @@ async function downloadStrip() {
   })));
 
   const t       = THEMES[currentTheme];
-  // captureFrame() always outputs 640×480, so these will be consistent
-  const FRAME_W = imgs[0].naturalWidth  || 640;
-  const FRAME_H = imgs[0].naturalHeight || 480;
+  // Use the image's native aspect ratio — no cropping at all.
+  // Cap frame width so the strip file stays a reasonable size.
+  const MAX_FRAME_W = 720;
+  const nativeW = imgs[0].naturalWidth  || 640;
+  const nativeH = imgs[0].naturalHeight || 480;
+  const FRAME_W = Math.min(nativeW, MAX_FRAME_W);
+  const FRAME_H = Math.round(FRAME_W * (nativeH / nativeW));
   const PAD     = t.padding;
   const GAP     = t.gap;
   const LTOP    = t.labelTop;
@@ -530,9 +510,6 @@ async function flipCamera() {
   if (isRunning) return;
   facingMode = facingMode === "user" ? "environment" : "user";
   flipBtn.title = facingMode === "user" ? "Switch to back camera" : "Switch to front camera";
-  flipBtn.innerHTML = facingMode === "user"
-    ? '<span class="btn-icon">⇄</span> Front Cam'
-    : '<span class="btn-icon">⇄</span> Back Cam';
   setStatus("Switching camera…");
   const ok = await startCamera();
   if (ok) applyFilterToVideo();
