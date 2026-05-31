@@ -435,41 +435,147 @@ async function runPhotobooth() {
 }
 
 // ── Download Strip — screenshot the live HTML strip directly ─────────────
+// ── Drop-in replacement for downloadStrip() ──────────────────────────────
+// Renders the photo strip to a canvas that exactly matches the live HTML
+// preview — no html2canvas dependency, no layout surprises.
+//
+// HOW TO USE:
+//   Replace the entire existing downloadStrip() function in script.js with
+//   the function below.  Everything else in script.js stays unchanged.
+// ─────────────────────────────────────────────────────────────────────────
+
 async function downloadStrip() {
   if (capturedImages.length < 4) return;
-
   setStatus("Preparing download…", "active");
 
-  // Dynamically load html2canvas if not already present
-  if (!window.html2canvas) {
-    await new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-
   try {
-    const canvas = await window.html2canvas(stripContainer, {
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false,
-    });
+    // ── 1. Dimensions — match CSS exactly ─────────────────────────────
+    // CSS --strip-width: 260px.  We draw at 3× for crisp output.
+    const SCALE      = 3;
+    const STRIP_W_PX = 260;          // matches CSS --strip-width
+    const FRAME_RATIO = 16 / 9;
 
+    const THEME   = THEMES[currentTheme];
+    const PADDING = THEME.padding;   // horizontal padding inside strip
+    const GAP     = THEME.gap;       // gap between frames
+    const LTOP    = THEME.labelTop;  // header area height  (px)
+    const LBTM    = THEME.labelBtm;  // footer area height  (px)
+
+    const frameW  = STRIP_W_PX - PADDING * 2;
+    const frameH  = Math.round(frameW / FRAME_RATIO);
+
+    // Total strip height: top-padding + header + 4 frames + 3 gaps + footer + bottom-padding
+    const STRIP_H_PX =
+      LTOP +                          // header label area
+      4 * (frameH + GAP) - GAP +      // 4 frames with 3 gaps between
+      LBTM;                           // footer label area + bottom pad
+
+    const SW = STRIP_W_PX * SCALE;
+    const SH = STRIP_H_PX * SCALE;
+    const FW = frameW * SCALE;
+    const FH = frameH * SCALE;
+
+    const canvas = document.createElement("canvas");
+    canvas.width  = SW;
+    canvas.height = SH;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(SCALE, SCALE);
+
+    // ── 2. Background & border ─────────────────────────────────────────
+    THEME.drawBg(ctx, STRIP_W_PX, STRIP_H_PX);
+
+    // ── 3. Header ──────────────────────────────────────────────────────
+    THEME.drawHeader(ctx, STRIP_W_PX, LTOP, STRIP_W_PX);
+
+    // ── 4. Frames ──────────────────────────────────────────────────────
+    const stickers   = STICKERS[currentTheme] || ["", "", "", ""];
+    const stickerPos = STICKER_POS[currentTheme];
+
+    for (let i = 0; i < 4; i++) {
+      const fx = PADDING;
+      const fy = LTOP + i * (frameH + GAP);
+
+      // Frame background (in case image doesn't fill)
+      ctx.fillStyle = "#ccc8c0";
+      ctx.fillRect(fx, fy, frameW, frameH);
+
+      // Draw photo
+      const img = new Image();
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+        img.src = capturedImages[i];
+      });
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(fx, fy, frameW, frameH);
+      ctx.clip();
+      ctx.drawImage(img, fx, fy, frameW, frameH);
+      ctx.restore();
+
+      // Sticker
+      const sticker = stickers[i];
+      if (sticker && stickerPos && stickerPos[i]) {
+        const sp     = stickerPos[i];
+        const anchor = sp.anchor || "tl";
+        const fontSize = Math.round(frameH * 0.22);   // ~1.4rem relative to frame
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.textBaseline = "top";
+
+        // Measure glyph to handle anchoring
+        const metrics = ctx.measureText(sticker);
+        const tw = metrics.width;
+        const th = fontSize;
+
+        let sx = fx + sp.xRatio * frameW;
+        let sy = fy + sp.yRatio * frameH;
+
+        if (anchor === "tr" || anchor === "br") sx -= tw;
+        if (anchor === "bl" || anchor === "br") sy -= th;
+        if (anchor === "center") { sx -= tw / 2; sy -= th / 2; }
+
+        // Small drop-shadow
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.25)";
+        ctx.shadowBlur  = 2 * SCALE;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
+        ctx.globalAlpha = currentTheme === "cottage" ? 0.35 : 0.88;
+        ctx.fillText(sticker, sx, sy);
+        ctx.restore();
+      }
+    }
+
+    // ── 5. Footer ──────────────────────────────────────────────────────
+    const d   = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const dateStr = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+
+    THEME.drawFooter(
+      ctx,
+      STRIP_W_PX,
+      STRIP_H_PX,
+      STRIP_W_PX,   // fw — font-size reference width
+      frameH,
+      PADDING,
+      LTOP,
+      LBTM,
+      GAP,
+      dateStr
+    );
+
+    // ── 6. Download ────────────────────────────────────────────────────
     const link    = document.createElement("a");
     link.download = `snapbooth-${currentTheme}-${Date.now()}.png`;
     link.href     = canvas.toDataURL("image/png");
     link.click();
     setStatus("Strip downloaded!", "done");
+
   } catch (err) {
     setStatus("Download failed: " + err.message);
+    console.error(err);
   }
 }
-
 // ── Retake ────────────────────────────────────────────────
 function retake() {
   capturedImages = [];
