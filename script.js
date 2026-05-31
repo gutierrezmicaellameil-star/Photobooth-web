@@ -83,7 +83,7 @@ const THEMES = {
     },
     drawHeader(ctx, sw, ltop, fw) {
       ctx.fillStyle = "#1a1a22";
-      ctx.font = `italic ${Math.round(fw * 0.07)}px Georgia, serif`;
+      ctx.font = `italic 18px 'DM Serif Display', Georgia, serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("SnapBooth", sw / 2, ltop / 2 + 4);
       ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1;
@@ -94,9 +94,9 @@ const THEMES = {
       ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(pad, fy); ctx.lineTo(sw - pad, fy); ctx.stroke();
       ctx.fillStyle = "rgba(0,0,0,0.35)";
-      ctx.font = `${Math.round(fw * 0.028)}px 'Courier New', monospace`;
+      ctx.font = `9px 'Space Mono', 'Courier New', monospace`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(dateStr.toUpperCase(), sw / 2, fy + (lbtm + pad) / 2 - 4);
+      ctx.fillText(dateStr.toUpperCase(), sw / 2, fy + 12);
     },
   },
   pastel: {
@@ -118,7 +118,7 @@ const THEMES = {
     },
     drawHeader(ctx, sw, ltop, fw) {
       ctx.fillStyle = "#C78FE5";
-      ctx.font = `italic ${Math.round(fw * 0.065)}px Georgia, serif`;
+      ctx.font = `italic 17px 'DM Serif Display', Georgia, serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("♡ booth", sw / 2, ltop / 2 + 2);
       ctx.strokeStyle = "#EDD5F9"; ctx.lineWidth = 1;
@@ -129,18 +129,18 @@ const THEMES = {
       ctx.strokeStyle = "#EDD5F9"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(pad, fy); ctx.lineTo(sw - pad, fy); ctx.stroke();
       ctx.fillStyle = "#C78FE5";
-      ctx.font = `italic ${Math.round(fw * 0.031)}px Georgia, serif`;
+      ctx.font = `9px 'Space Mono', 'Courier New', monospace`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("always in bloom ✦", sw / 2, fy + 16);
-      ctx.font = `${Math.round(fw * 0.026)}px 'Courier New', monospace`;
+      ctx.fillText("ALWAYS IN BLOOM ✦", sw / 2, fy + 13);
       ctx.fillStyle = "#D5A8E8";
-      ctx.fillText(dateStr, sw / 2, fy + 32);
+      ctx.fillText(dateStr, sw / 2, fy + 26);
     },
   },
   diner: {
     header:  "SNAP!",
     tagline: "★ PHOTO BOOTH ★",
-    padding: 22, gap: 8, labelTop: 64, labelBtm: 54,
+    // labelTop now accounts for header height (padding 12+12=24) + bottom gap (14)
+    padding: 22, gap: 8, labelTop: 52, labelBtm: 48,
     drawBg(ctx, sw, sh) {
       ctx.fillStyle = "#FFF8E7";
       ctx.fillRect(0, 0, sw, sh);
@@ -150,33 +150,34 @@ const THEMES = {
       ctx.strokeRect(8, 8, sw - 16, sh - 16);
     },
     drawHeader(ctx, sw, ltop, fw) {
+      // Fill header band from top
       ctx.fillStyle = "#E8394D"; ctx.fillRect(0, 0, sw, ltop);
       ctx.fillStyle = "#FFF8E7";
-      ctx.font = `900 ${Math.round(fw * 0.075)}px 'Arial Black', Arial, sans-serif`;
+      ctx.font = `900 16px 'Arial Black', Arial, sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("SNAP!", sw / 2, ltop / 2);
-      ctx.fillStyle = "#FFD700"; ctx.font = "16px sans-serif";
-      ctx.fillText("★", 16, ltop / 2 + 4); ctx.fillText("★", sw - 16, ltop / 2 + 4);
+      ctx.fillText("SNAP!", sw / 2, ltop / 2 + 2);
+      ctx.fillStyle = "#FFD700"; ctx.font = "14px sans-serif";
+      ctx.fillText("★", 14, ltop / 2 + 4); ctx.fillText("★", sw - 14, ltop / 2 + 4);
     },
     drawFooter(ctx, sw, sh, fw, fh, pad, ltop, lbtm, gap, dateStr) {
-      const fy = ltop + 4 * (fh + gap) - gap + 12;
+      const fy = ltop + 4 * (fh + gap) - gap + 8;
       ctx.strokeStyle = "#E8394D"; ctx.lineWidth = 1.5;
       ctx.beginPath();
       let zx = pad; ctx.moveTo(zx, fy);
       const zstep = 8;
       while (zx < sw - pad) {
-        ctx.lineTo(Math.min(zx + zstep/2, sw - pad), fy + 5);
+        ctx.lineTo(Math.min(zx + zstep/2, sw - pad), fy + 4);
         ctx.lineTo(Math.min(zx + zstep, sw - pad), fy);
         zx += zstep;
       }
       ctx.stroke();
       ctx.fillStyle = "#E8394D";
-      ctx.font = `bold ${Math.round(fw * 0.028)}px 'Arial Black', Arial, sans-serif`;
+      ctx.font = `bold 8px 'Arial Black', Arial, sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("PHOTO BOOTH", sw / 2, fy + 18);
-      ctx.font = `${Math.round(fw * 0.024)}px 'Courier New', monospace`;
+      ctx.fillText("★  PHOTO BOOTH  ★", sw / 2, fy + 14);
+      ctx.font = `8px 'Space Mono', 'Courier New', monospace`;
       ctx.fillStyle = "#C4334A";
-      ctx.fillText("★  " + dateStr + "  ★", sw / 2, fy + 34);
+      ctx.fillText(dateStr, sw / 2, fy + 26);
     },
   },
   cottage: {
@@ -198,7 +199,7 @@ const THEMES = {
     },
     drawHeader(ctx, sw, ltop, fw) {
       ctx.fillStyle = "#6D8E56";
-      ctx.font = `italic ${Math.round(fw * 0.055)}px Georgia, serif`;
+      ctx.font = `italic 14px 'DM Serif Display', Georgia, serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("a little memory", sw / 2, ltop / 2 + 2);
       ctx.strokeStyle = "#B8CF80"; ctx.lineWidth = 0.8;
@@ -213,14 +214,14 @@ const THEMES = {
       ctx.beginPath(); ctx.moveTo(pad, fy); ctx.lineTo(sw - pad, fy); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = "#7A9A63";
-      ctx.font = `italic ${Math.round(fw * 0.032)}px Georgia, serif`;
+      ctx.font = `8px 'Space Mono', 'Courier New', monospace`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("gathered & kept", sw / 2, fy + 16);
+      ctx.fillText("GATHERED & KEPT", sw / 2, fy + 13);
       ctx.fillStyle = "#A09070";
-      ctx.font = `${Math.round(fw * 0.026)}px 'Courier New', monospace`;
+      ctx.font = `8px 'Space Mono', 'Courier New', monospace`;
       const months = ["january","february","march","april","may","june","july","august","september","october","november","december"];
       const d = new Date();
-      ctx.fillText(`${months[d.getMonth()]} ${d.getFullYear()}`, sw / 2, fy + 32);
+      ctx.fillText(`${months[d.getMonth()]} ${d.getFullYear()}`, sw / 2, fy + 26);
     },
   },
 };
@@ -283,7 +284,6 @@ function playShutterSound() {
 
 // ── Camera ────────────────────────────────────────────────
 async function startCamera() {
-  // Stop any existing stream first
   if (stream) {
     stream.getTracks().forEach(t => t.stop());
     stream = null;
@@ -299,7 +299,6 @@ async function startCamera() {
     await videoFeed.play();
     cameraOffScreen.classList.add("hidden");
 
-    // Only mirror the front-facing camera
     videoFeed.style.transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
 
     setStatus('Click "Start Photobooth" to begin your session');
@@ -315,7 +314,7 @@ function applyFilterToVideo() {
   videoFeed.style.filter = FILTER_CSS[currentFilter] || "none";
 }
 
-// ── Capture frame cropped to 16:9, matching the strip frame ratio ────────
+// ── Capture frame cropped to 16:9 ────────────────────────
 function captureFrame() {
   const vw = videoFeed.videoWidth  || 1280;
   const vh = videoFeed.videoHeight || 720;
@@ -325,13 +324,11 @@ function captureFrame() {
 
   let sx, sy, sw, sh;
   if (videoRatio > TARGET_RATIO) {
-    // Video wider than 16:9 — crop sides
     sh = vh;
     sw = Math.round(vh * TARGET_RATIO);
     sx = Math.round((vw - sw) / 2);
     sy = 0;
   } else {
-    // Video taller than 16:9 — crop top/bottom
     sw = vw;
     sh = Math.round(vw / TARGET_RATIO);
     sx = 0;
@@ -434,60 +431,41 @@ async function runPhotobooth() {
   isRunning            = false;
 }
 
-// ── Download Strip — screenshot the live HTML strip directly ─────────────
-// ── Drop-in replacement for downloadStrip() ──────────────────────────────
-// Renders the photo strip to a canvas that exactly matches the live HTML
-// preview — no html2canvas dependency, no layout surprises.
-//
-// HOW TO USE:
-//   Replace the entire existing downloadStrip() function in script.js with
-//   the function below.  Everything else in script.js stays unchanged.
-// ─────────────────────────────────────────────────────────────────────────
-
+// ── Download Strip ────────────────────────────────────────
 async function downloadStrip() {
   if (capturedImages.length < 4) return;
   setStatus("Preparing download…", "active");
 
   try {
-    // ── 1. Dimensions — match CSS exactly ─────────────────────────────
-    // CSS --strip-width: 260px.  We draw at 3× for crisp output.
-    const SCALE      = 3;
-    const STRIP_W_PX = 260;          // matches CSS --strip-width
+    await document.fonts.ready;
+
+    const SCALE       = 3;
+    const STRIP_W_PX  = 260;
     const FRAME_RATIO = 16 / 9;
 
     const THEME   = THEMES[currentTheme];
-    const PADDING = THEME.padding;   // horizontal padding inside strip
-    const GAP     = THEME.gap;       // gap between frames
-    const LTOP    = THEME.labelTop;  // header area height  (px)
-    const LBTM    = THEME.labelBtm;  // footer area height  (px)
+    const PADDING = THEME.padding;
+    const GAP     = THEME.gap;
+    const LTOP    = THEME.labelTop;
+    const LBTM    = THEME.labelBtm;
 
-    const frameW  = STRIP_W_PX - PADDING * 2;
-    const frameH  = Math.round(frameW / FRAME_RATIO);
+    const frameW = STRIP_W_PX - PADDING * 2;
+    const frameH = Math.round(frameW / FRAME_RATIO);
 
-    // Total strip height: top-padding + header + 4 frames + 3 gaps + footer + bottom-padding
     const STRIP_H_PX =
-      LTOP +                          // header label area
-      4 * (frameH + GAP) - GAP +      // 4 frames with 3 gaps between
-      LBTM;                           // footer label area + bottom pad
+      LTOP +
+      4 * (frameH + GAP) - GAP +
+      LBTM;
 
-    const SW = STRIP_W_PX * SCALE;
-    const SH = STRIP_H_PX * SCALE;
-    const FW = frameW * SCALE;
-    const FH = frameH * SCALE;
-
-    const canvas = document.createElement("canvas");
-    canvas.width  = SW;
-    canvas.height = SH;
-    const ctx = canvas.getContext("2d");
+    const canvas  = document.createElement("canvas");
+    canvas.width  = STRIP_W_PX * SCALE;
+    canvas.height = STRIP_H_PX * SCALE;
+    const ctx     = canvas.getContext("2d");
     ctx.scale(SCALE, SCALE);
 
-    // ── 2. Background & border ─────────────────────────────────────────
     THEME.drawBg(ctx, STRIP_W_PX, STRIP_H_PX);
-
-    // ── 3. Header ──────────────────────────────────────────────────────
     THEME.drawHeader(ctx, STRIP_W_PX, LTOP, STRIP_W_PX);
 
-    // ── 4. Frames ──────────────────────────────────────────────────────
     const stickers   = STICKERS[currentTheme] || ["", "", "", ""];
     const stickerPos = STICKER_POS[currentTheme];
 
@@ -495,17 +473,12 @@ async function downloadStrip() {
       const fx = PADDING;
       const fy = LTOP + i * (frameH + GAP);
 
-      // Frame background (in case image doesn't fill)
       ctx.fillStyle = "#ccc8c0";
       ctx.fillRect(fx, fy, frameW, frameH);
 
-      // Draw photo
       const img = new Image();
-      await new Promise((res, rej) => {
-        img.onload = res;
-        img.onerror = rej;
-        img.src = capturedImages[i];
-      });
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = capturedImages[i]; });
+
       ctx.save();
       ctx.beginPath();
       ctx.rect(fx, fy, frameW, frameH);
@@ -513,58 +486,36 @@ async function downloadStrip() {
       ctx.drawImage(img, fx, fy, frameW, frameH);
       ctx.restore();
 
-      // Sticker
       const sticker = stickers[i];
       if (sticker && stickerPos && stickerPos[i]) {
-        const sp     = stickerPos[i];
-        const anchor = sp.anchor || "tl";
-        const fontSize = Math.round(frameH * 0.22);   // ~1.4rem relative to frame
-        ctx.font = `${fontSize}px sans-serif`;
-        ctx.textBaseline = "top";
-
-        // Measure glyph to handle anchoring
-        const metrics = ctx.measureText(sticker);
-        const tw = metrics.width;
+        const sp       = stickerPos[i];
+        const anchor   = sp.anchor || "tl";
+        const fontSize = Math.round(frameH * 0.22);
+        ctx.font          = `${fontSize}px sans-serif`;
+        ctx.textBaseline  = "top";
+        const tw = ctx.measureText(sticker).width;
         const th = fontSize;
-
         let sx = fx + sp.xRatio * frameW;
         let sy = fy + sp.yRatio * frameH;
-
         if (anchor === "tr" || anchor === "br") sx -= tw;
         if (anchor === "bl" || anchor === "br") sy -= th;
         if (anchor === "center") { sx -= tw / 2; sy -= th / 2; }
-
-        // Small drop-shadow
         ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.25)";
-        ctx.shadowBlur  = 2 * SCALE;
-        ctx.shadowOffsetX = 0;
+        ctx.shadowColor   = "rgba(0,0,0,0.25)";
+        ctx.shadowBlur    = 2;
         ctx.shadowOffsetY = 1;
-        ctx.globalAlpha = currentTheme === "cottage" ? 0.35 : 0.88;
+        ctx.globalAlpha   = currentTheme === "cottage" ? 0.35 : 0.88;
         ctx.fillText(sticker, sx, sy);
         ctx.restore();
       }
     }
 
-    // ── 5. Footer ──────────────────────────────────────────────────────
-    const d   = new Date();
-    const pad = n => String(n).padStart(2, "0");
-    const dateStr = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+    const d      = new Date();
+    const padNum = n => String(n).padStart(2, "0");
+    const dateStr = `${d.getFullYear()}.${padNum(d.getMonth() + 1)}.${padNum(d.getDate())}`;
 
-    THEME.drawFooter(
-      ctx,
-      STRIP_W_PX,
-      STRIP_H_PX,
-      STRIP_W_PX,   // fw — font-size reference width
-      frameH,
-      PADDING,
-      LTOP,
-      LBTM,
-      GAP,
-      dateStr
-    );
+    THEME.drawFooter(ctx, STRIP_W_PX, STRIP_H_PX, STRIP_W_PX, frameH, PADDING, LTOP, LBTM, GAP, dateStr);
 
-    // ── 6. Download ────────────────────────────────────────────────────
     const link    = document.createElement("a");
     link.download = `snapbooth-${currentTheme}-${Date.now()}.png`;
     link.href     = canvas.toDataURL("image/png");
@@ -576,6 +527,7 @@ async function downloadStrip() {
     console.error(err);
   }
 }
+
 // ── Retake ────────────────────────────────────────────────
 function retake() {
   capturedImages = [];

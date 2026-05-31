@@ -420,7 +420,10 @@ body {
 .strip-container[data-theme="diner"] {
   background: #FFF8E7;
   border: 3px solid #E8394D;
-  box-shadow: 0 0 0 1px #E8394D, 4px 4px 0 #E8394D, 0 20px 60px rgba(0,0,0,0.5);
+  /* Remove the offset box-shadow that was eating into strip space */
+  box-shadow: 0 0 0 1px #E8394D, 0 20px 60px rgba(0,0,0,0.5);
+  /* Remove default top padding — header manages its own spacing */
+  padding-top: 0;
 }
 .strip-container[data-theme="diner"]::before,
 .strip-container[data-theme="diner"]::after { display: none; }
@@ -429,7 +432,11 @@ body {
   font-family: 'Arial Black', sans-serif; font-style: normal;
   font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase;
   color: #FFF8E7; background: #E8394D;
-  margin: -14px -12px 10px; padding: 8px 12px; border-radius: 0; border-bottom: none;
+  /* Bleed to left/right edges, no negative top margin, proper bottom gap */
+  margin: 0 -12px 14px;
+  padding: 12px 12px;
+  border-radius: 0;
+  border-bottom: none;
 }
 .strip-container[data-theme="diner"] .strip-footer-label {
   color: #E8394D; border-top: 1px dashed #E8394D; letter-spacing: 0.12em;
